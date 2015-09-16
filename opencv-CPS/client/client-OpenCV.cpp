@@ -64,7 +64,7 @@ int delay_time = 0;
 struct arg_transmit {
     int sock;
     char file_name[100];
-    vector<uchar>* bufferFrameAddr;
+    vector<uchar> bufferFrame;
 };
 
 /******************************************************************************
@@ -296,7 +296,7 @@ void *transmit_child(void *arg)
     int sockfd = args->sock;
     char *file_name = args->file_name;
     //add new
-    vector<uchar> bufferFrame = &args->bufferFrameAddr;
+    vector<uchar> bufferFrame = args->bufferFrame;
 
     if (!orbit) {
         int n;
@@ -363,13 +363,25 @@ void *transmit_child(void *arg)
      */
         //transfer memory image;
         bzero(bufferSend, sizeof(bufferSend));
+
+        //decode bufferFrame into Mat and then set Mat to char*
         Mat decodeImg = imdecode(Mat(bufferFrame), CV_LOAD_IMAGE_COLOR);
         unsigned char *transferImg = decodeImg.data;
-        if (send(sockfd, transferImg, sizeof(transferImg), 0) < 0)  
-            {  
-                printf("Send File: %s Failed!\n", file_name);  
-                break;  
-             }  
+         int length = strlen(transferImg);
+         int offset = 0;
+         while( offset < length){
+            for(int i =0; i<=BUFFER_SIZE;i++){
+                bufferSend[i] = transferImg[i + offset];
+            }
+            if(send(sockfd, bufferSend, BUFFER_SIZE, 0) < 0){
+                printf("Send File Failed\n");
+                break;
+            }
+            bzero(bufferSend, BUFFER_SIZE);
+            offset += BUFFER_SIZE;
+         }
+
+        printf("[client] Transfer Finished");
 
     }
     // below is orbit mode, using MFAPI
@@ -410,7 +422,7 @@ void *transmit_child(void *arg)
         n = MsgD.send(sockfd, bufferSend, 100);
         if (n < 0) 
             error("ERROR writing to socket");
-
+        /*
         FILE *fp = fopen(file_name, "r");  
         if (fp == NULL)  
         {  
@@ -443,6 +455,27 @@ void *transmit_child(void *arg)
             fclose(fp);  
             printf("[client] Transfer Finished!\n\n");  
         }
+        */
+        bzero(bufferSend, sizeof(bufferSend));
+
+        //decode bufferFrame into Mat and then set Mat to char*
+        Mat decodeImg = imdecode(Mat(bufferFrame), CV_LOAD_IMAGE_COLOR);
+        unsigned char *transferImg = decodeImg.data;
+         int length = strlen(transferImg);
+         int offset = 0;
+         while( offset < length){
+            for(int i =0; i<=BUFFER_SIZE;i++){
+                bufferSend[i] = transferImg[i + offset];
+            }
+            if(send(sockfd, bufferSend, BUFFER_SIZE, 0) < 0){
+                printf("Send File Failed\n");
+                break;
+            }
+            bzero(bufferSend, BUFFER_SIZE);
+            offset += BUFFER_SIZE;
+         }
+
+        printf("[client] Transfer Finished");
     }
 
     pthread_mutex_unlock(&sendLock);
@@ -566,7 +599,6 @@ void *display_thread(void *arg)
                 imwrite(file_name, frame, compression_params);
                 vector<uchar> bufferFrame;
                 imencode(".jpg", frame, bufferFrame, compression_params);
-                vector<uchar> * bufferFrameAddr = &bufferFrame;
                 ++index;
 
                 /*-------------------send current frame here--------------*/
@@ -574,7 +606,7 @@ void *display_thread(void *arg)
                 pthread_t thread_id;
                 struct arg_transmit trans_info;
                 trans_info.sock = sockfd;
-                trans_info.bufferFrameAddr = bufferFrameAddr;
+                trans_info.bufferFrame = bufferFrame;
                // strcpy(trans_info.file_name, file_name);
                 /* create thread and pass socket and file name to send file */
                 if (pthread_create(&thread_id, 0, transmit_child, (void *)&(trans_info)) == -1)
@@ -630,7 +662,6 @@ void *display_thread(void *arg)
                 Mat sample = imread(file_name);
                 vector<uchar> bufferFrame;
                 imencode(".jpg", sample, bufferFrame, compression_params);
-                vector<uchar> * bufferFrameAddr = &bufferFrame;
                 ++index;
 
 
@@ -639,7 +670,7 @@ void *display_thread(void *arg)
                 pthread_t thread_id;
                 struct arg_transmit trans_info;
                 trans_info.sock = sockfd;
-                trans_info.bufferFrameAddr = bufferFrameAddr;
+                trans_info.bufferFrame= bufferFrame;
                 bzero(&trans_info.file_name, BUFFER_SIZE);
                 strcpy(trans_info.file_name, file_name);
                 /* create thread and pass socket and file name to send file */
@@ -769,12 +800,17 @@ void *orbit_thread(void *arg)
                 sprintf(file_name, "pics/%s-%d.jpg", userID, index);
                 imwrite(file_name, frame, compression_params);
                 ++index;
+                vector<uchar> bufferFrame;
+                imencode(".jpg", frame, bufferFrame, compression_params);
 
+               
                 /*-------------------send current frame here--------------*/
 
                 pthread_t thread_id;
                 struct arg_transmit trans_info;
                 trans_info.sock = sockfd;
+                trans_info.bufferFrame = bufferFrame;
+
               //  strcpy(trans_info.file_name, file_name);
                 /* create thread and pass socket and file name to send file */
                 if (pthread_create(&thread_id, 0, transmit_child, (void *)&(trans_info)) == -1)
