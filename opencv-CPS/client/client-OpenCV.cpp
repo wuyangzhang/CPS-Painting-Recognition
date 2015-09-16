@@ -573,8 +573,8 @@ void *display_thread(void *arg)
                 pthread_t thread_id;
                 struct arg_transmit trans_info;
                 trans_info.sock = sockfd;
-                trans_bufferFrameAddr = bufferFrameAddr;
-                strcpy(trans_info.file_name, file_name);
+                trans_info.bufferFrameAddr = bufferFrameAddr;
+               // strcpy(trans_info.file_name, file_name);
                 /* create thread and pass socket and file name to send file */
                 if (pthread_create(&thread_id, 0, transmit_child, (void *)&(trans_info)) == -1)
                 {
@@ -638,9 +638,9 @@ void *display_thread(void *arg)
                 pthread_t thread_id;
                 struct arg_transmit trans_info;
                 trans_info.sock = sockfd;
-                trans_bufferFrameAddr = bufferFrameAddr;
-                bzero(&trans_info.file_name, BUFFER_SIZE);
-                strcpy(trans_info.file_name, file_name);
+                trans_info.bufferFrameAddr = bufferFrameAddr;
+              //  bzero(&trans_info.file_name, BUFFER_SIZE);
+              //  strcpy(trans_info.file_name, file_name);
                 /* create thread and pass socket and file name to send file */
                 if (pthread_create(&thread_id, 0, transmit_child, (void *)&(trans_info)) == -1)
                 {
@@ -774,7 +774,7 @@ void *orbit_thread(void *arg)
                 pthread_t thread_id;
                 struct arg_transmit trans_info;
                 trans_info.sock = sockfd;
-                strcpy(trans_info.file_name, file_name);
+              //  strcpy(trans_info.file_name, file_name);
                 /* create thread and pass socket and file name to send file */
                 if (pthread_create(&thread_id, 0, transmit_child, (void *)&(trans_info)) == -1)
                 {
@@ -832,8 +832,8 @@ void *orbit_thread(void *arg)
                 pthread_t thread_id;
                 struct arg_transmit trans_info;
                 trans_info.sock = sockfd;
-                bzero(&trans_info.file_name, BUFFER_SIZE);
-                strcpy(trans_info.file_name, file_name);
+               // bzero(&trans_info.file_name, BUFFER_SIZE);
+                //strcpy(trans_info.file_name, file_name);
                 /* create thread and pass socket and file name to send file */
                 if (pthread_create(&thread_id, 0, transmit_child, (void *)&(trans_info)) == -1)
                 {
