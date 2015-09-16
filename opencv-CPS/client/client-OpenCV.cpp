@@ -63,6 +63,7 @@ int delay_time = 0;
 
 struct arg_transmit {
     int sock;
+    char file_name[100];
     vector<uchar>* bufferFrameAddr;
 };
 
@@ -293,7 +294,7 @@ void *transmit_child(void *arg)
 
     struct arg_transmit *args = (struct arg_transmit *)arg;
     int sockfd = args->sock;
-   // char *file_name = args->file_name;
+    char *file_name = args->file_name;
     //add new
     vector<uchar> bufferFrame = &args->bufferFrameAddr;
 
@@ -561,8 +562,8 @@ void *display_thread(void *arg)
 
 
                 // set up the file name and encode the frame to jpeg
-               // sprintf(file_name, "pics/%s-%d.jpg", userID, index);
-                //imwrite(file_name, frame, compression_params);
+                sprintf(file_name, "pics/%s-%d.jpg", userID, index);
+                imwrite(file_name, frame, compression_params);
                 vector<uchar> bufferFrame;
                 imencode(".jpg", frame, bufferFrame, compression_params);
                 vector<uchar> * bufferFrameAddr = &bufferFrame;
@@ -639,8 +640,8 @@ void *display_thread(void *arg)
                 struct arg_transmit trans_info;
                 trans_info.sock = sockfd;
                 trans_info.bufferFrameAddr = bufferFrameAddr;
-              //  bzero(&trans_info.file_name, BUFFER_SIZE);
-              //  strcpy(trans_info.file_name, file_name);
+                bzero(&trans_info.file_name, BUFFER_SIZE);
+                strcpy(trans_info.file_name, file_name);
                 /* create thread and pass socket and file name to send file */
                 if (pthread_create(&thread_id, 0, transmit_child, (void *)&(trans_info)) == -1)
                 {
@@ -832,8 +833,8 @@ void *orbit_thread(void *arg)
                 pthread_t thread_id;
                 struct arg_transmit trans_info;
                 trans_info.sock = sockfd;
-               // bzero(&trans_info.file_name, BUFFER_SIZE);
-                //strcpy(trans_info.file_name, file_name);
+                bzero(&trans_info.file_name, BUFFER_SIZE);
+                strcpy(trans_info.file_name, file_name);
                 /* create thread and pass socket and file name to send file */
                 if (pthread_create(&thread_id, 0, transmit_child, (void *)&(trans_info)) == -1)
                 {
