@@ -63,7 +63,7 @@ int delay_time = 0;
 
 struct arg_transmit {
     int sock;
-    char file_name[100];
+    vector<uchar>* bufferFrameAddr;
 };
 
 /******************************************************************************
@@ -293,7 +293,9 @@ void *transmit_child(void *arg)
 
     struct arg_transmit *args = (struct arg_transmit *)arg;
     int sockfd = args->sock;
-    char *file_name = args->file_name;
+   // char *file_name = args->file_name;
+    //add new
+    vector<uchar> bufferFrame = &args->bufferFrameAddr;
 
     if (!orbit) {
         int n;
@@ -330,6 +332,7 @@ void *transmit_child(void *arg)
         if (n < 0) 
             error("ERROR reading from socket");
 
+/*
         FILE *fp = fopen(file_name, "r");  
         if (fp == NULL)  
         {  
@@ -356,6 +359,17 @@ void *transmit_child(void *arg)
             fclose(fp);  
             printf("[client] Transfer Finished!\n\n");  
         }
+     */
+        //transfer memory image;
+        bzero(bufferSend, sizeof(bufferSend));
+        Mat decodeImg = imdecode(Mat(bufferFrame), CV_LOAD_IMAGE_COLOR);
+        unsigned char *transferImg = decodeImg.data;
+        if (send(sockfd, transferImg, sizeof(transferImg), 0) < 0)  
+            {  
+                printf("Send File: %s Failed!\n", file_name);  
+                break;  
+             }  
+
     }
     // below is orbit mode, using MFAPI
     else
@@ -547,8 +561,11 @@ void *display_thread(void *arg)
 
 
                 // set up the file name and encode the frame to jpeg
-                sprintf(file_name, "pics/%s-%d.jpg", userID, index);
-                imwrite(file_name, frame, compression_params);
+               // sprintf(file_name, "pics/%s-%d.jpg", userID, index);
+                //imwrite(file_name, frame, compression_params);
+                vector<uchar> bufferFrame;
+                imencode(".jpg", frame, bufferFrame, compression_params);
+                vector<uchar> * bufferFrameAddr = &bufferFrame;
                 ++index;
 
                 /*-------------------send current frame here--------------*/
@@ -556,6 +573,7 @@ void *display_thread(void *arg)
                 pthread_t thread_id;
                 struct arg_transmit trans_info;
                 trans_info.sock = sockfd;
+                trans_bufferFrameAddr = bufferFrameAddr;
                 strcpy(trans_info.file_name, file_name);
                 /* create thread and pass socket and file name to send file */
                 if (pthread_create(&thread_id, 0, transmit_child, (void *)&(trans_info)) == -1)
@@ -607,6 +625,11 @@ void *display_thread(void *arg)
 
                 // set up the file name and encode the frame to jpeg
                 sprintf(file_name, "pics/orbit-sample.jpg");
+                //new
+                Mat sample = imread(file_name);
+                vector<uchar> bufferFrame;
+                imencode(".jpg", sample, bufferFrame, compression_params);
+                vector<uchar> * bufferFrameAddr = &bufferFrame;
                 ++index;
 
 
@@ -615,6 +638,7 @@ void *display_thread(void *arg)
                 pthread_t thread_id;
                 struct arg_transmit trans_info;
                 trans_info.sock = sockfd;
+                trans_bufferFrameAddr = bufferFrameAddr;
                 bzero(&trans_info.file_name, BUFFER_SIZE);
                 strcpy(trans_info.file_name, file_name);
                 /* create thread and pass socket and file name to send file */
