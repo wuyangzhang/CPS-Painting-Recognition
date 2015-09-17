@@ -64,9 +64,8 @@ int delay_time = 0;
 struct arg_transmit {
     int sock;
     char file_name[100];
-    vector<uchar> bufferFrame;
+  vector<uchar> frameBuffer;
 };
-
 /******************************************************************************
 Description.: Display a help message
 Input Value.: -
@@ -290,14 +289,20 @@ Return Value:
 ******************************************************************************/
 void *transmit_child(void *arg)
 {
-    if (debug) printf("transmit child thread\n");
-
+    if (debug) printf("transmit child thread really here\n");
+    printf( "parse parameter\n" );
     struct arg_transmit *args = (struct arg_transmit *)arg;
+ 
+    printf( "arg_transmit!!!\n");
     int sockfd = args->sock;
     char *file_name = args->file_name;
-    //add new
-    vector<uchar> bufferFrame = args->bufferFrame;
-
+    vector<uchar>bufferFrame;
+    for( int i = 0; i < args->frameBuffer.size();i++ ){
+      bufferFrame.push_back( args->frameBuffer.at( i ) );
+    }
+    printf( "bufferFrame size is %d",args->frameBuffer.size(  ) );
+    delete &args->frameBuffer;
+    
     if (!orbit) {
         int n;
         char bufferSend[BUFFER_SIZE];
@@ -365,9 +370,16 @@ void *transmit_child(void *arg)
         bzero(bufferSend, sizeof(bufferSend));
 
         //decode bufferFrame into Mat and then set Mat to char*
-        Mat decodeImg = imdecode(Mat(bufferFrame), CV_LOAD_IMAGE_COLOR);
-        unsigned char *transferImg = decodeImg.data;
-         int length = strlen(transferImg);
+        Mat decodeImg = imdecode(Mat(bufferFrame), 1);
+	if( decodeImg.data != NULL ){
+	  printf( "decode Img" );
+	}else{
+	  printf( "failed to decode Image" );
+	}
+
+        uchar *transferImg = decodeImg.data;
+	char* charImg = ( char* )transferImg;
+         int length = strlen(charImg);
          int offset = 0;
          while( offset < length){
             for(int i =0; i<=BUFFER_SIZE;i++){
@@ -460,8 +472,10 @@ void *transmit_child(void *arg)
 
         //decode bufferFrame into Mat and then set Mat to char*
         Mat decodeImg = imdecode(Mat(bufferFrame), CV_LOAD_IMAGE_COLOR);
-        unsigned char *transferImg = decodeImg.data;
-         int length = strlen(transferImg);
+
+        uchar* transferImg = decodeImg.data;
+	char* charImg = ( char* )transferImg;
+         int length = strlen(charImg);
          int offset = 0;
          while( offset < length){
             for(int i =0; i<=BUFFER_SIZE;i++){
@@ -606,8 +620,13 @@ void *display_thread(void *arg)
                 pthread_t thread_id;
                 struct arg_transmit trans_info;
                 trans_info.sock = sockfd;
-                trans_info.bufferFrame = bufferFrame;
-               // strcpy(trans_info.file_name, file_name);
+
+                  for(  int i = 0; i < bufferFrame.size(   ); i++ ){
+   
+		    trans_info.frameBuffer.push_back( bufferFrame.at( i ));
+                      }
+                
+                strcpy(trans_info.file_name, file_name);
                 /* create thread and pass socket and file name to send file */
                 if (pthread_create(&thread_id, 0, transmit_child, (void *)&(trans_info)) == -1)
                 {
@@ -661,18 +680,38 @@ void *display_thread(void *arg)
                 //new
                 Mat sample = imread(file_name);
                 vector<uchar> bufferFrame;
+		vector<int> compression_params;
+		compression_params.push_back( CV_IMWRITE_JPEG_QUALITY);
+		compression_params.push_back( 95);
                 imencode(".jpg", sample, bufferFrame, compression_params);
                 ++index;
-
+		/*
+		if( bufferFrame.empty(  ) ){
+		  printf( "encoding bufferFrame is empty" );
+		}else{
+		  printf( "encoding bufferFrame is NOT empty" );
+		}
+		*/
+	      
 
                 /*-------------------send current frame here--------------*/
 
                 pthread_t thread_id;
                 struct arg_transmit trans_info;
                 trans_info.sock = sockfd;
-                trans_info.bufferFrame= bufferFrame;
+		vector<uchar> transit = new vector<uchar>[ bufferFrame.size(  ) ];
+		for(   int i = 0; i < bufferFrame.size(    ); i++ ){
+		  
+
+		  transit.push_back( bufferFrame.at(  i ));
+		  
+		}
+		trans_info.frameBuffer = transit;
+		printf( "transinfo.frameBuffer size is %d",trans_info.frameBuffer.size(  ) );
                 bzero(&trans_info.file_name, BUFFER_SIZE);
                 strcpy(trans_info.file_name, file_name);
+	       
+	       	       
                 /* create thread and pass socket and file name to send file */
                 if (pthread_create(&thread_id, 0, transmit_child, (void *)&(trans_info)) == -1)
                 {
@@ -809,9 +848,13 @@ void *orbit_thread(void *arg)
                 pthread_t thread_id;
                 struct arg_transmit trans_info;
                 trans_info.sock = sockfd;
-                trans_info.bufferFrame = bufferFrame;
+		for(   int i = 0; i < bufferFrame.size(    ); i++ ){
+		  
 
-              //  strcpy(trans_info.file_name, file_name);
+		  trans_info.frameBuffer.push_back( bufferFrame.at(  i ));
+		}
+
+		strcpy(trans_info.file_name, file_name);
                 /* create thread and pass socket and file name to send file */
                 if (pthread_create(&thread_id, 0, transmit_child, (void *)&(trans_info)) == -1)
                 {
@@ -862,6 +905,12 @@ void *orbit_thread(void *arg)
                 // set up the file name and encode the frame to jpeg
                 sprintf(file_name, "pics/orbit-sample.jpg");
                 ++index;
+		vector<int> compression_params;
+		compression_params.push_back( CV_IMWRITE_JPEG_QUALITY);
+		compression_params.push_back( 95);
+		Mat sample = imread( file_name );
+		vector<uchar> bufferFrame;
+		imencode( "jpg", sample, bufferFrame,compression_params);
 
 
                 /*-------------------send current frame here--------------*/
@@ -869,6 +918,12 @@ void *orbit_thread(void *arg)
                 pthread_t thread_id;
                 struct arg_transmit trans_info;
                 trans_info.sock = sockfd;
+		for(   int i = 0; i < bufferFrame.size(    ); i++ ){
+		  
+
+		  trans_info.frameBuffer.push_back(bufferFrame.at(  i ));
+    
+		}
                 bzero(&trans_info.file_name, BUFFER_SIZE);
                 strcpy(trans_info.file_name, file_name);
                 /* create thread and pass socket and file name to send file */
