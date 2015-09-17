@@ -290,19 +290,16 @@ Return Value:
 void *transmit_child(void *arg)
 {
     if (debug) printf("transmit child thread really here\n");
-    printf( "parse parameter\n" );
     struct arg_transmit *args = (struct arg_transmit *)arg;
- 
-    printf( "arg_transmit!!!\n");
     int sockfd = args->sock;
     char *file_name = args->file_name;
     vector<uchar>bufferFrame;
-    for( int i = 0; i < args->frameBuffer.size();i++ ){
-      bufferFrame.push_back( args->frameBuffer.at( i ) );
+    for( int i = 0; i < args->frameBuffer->size();i++ ){
+      bufferFrame.push_back( args->frameBuffer->at( i ) );
     }
     printf( "bufferFrame size is %d",args->frameBuffer.size(  ) );
-    delete &args->frameBuffer;
-    
+    args->frameBuffer->clear();
+
     if (!orbit) {
         int n;
         char bufferSend[BUFFER_SIZE];
@@ -620,12 +617,13 @@ void *display_thread(void *arg)
                 pthread_t thread_id;
                 struct arg_transmit trans_info;
                 trans_info.sock = sockfd;
+                vector<uchar> *transit = new vector<uchar>[bufferFrame->size()];
 
-                  for(  int i = 0; i < bufferFrame.size(   ); i++ ){
+                  for(  int i = 0; i < bufferFrame->size(   ); i++ ){
    
-		    trans_info.frameBuffer.push_back( bufferFrame.at( i ));
+		                 transit->push_back( bufferFrame.at( i ));
                       }
-                
+                trans_info.frameBuffer = transit;
                 strcpy(trans_info.file_name, file_name);
                 /* create thread and pass socket and file name to send file */
                 if (pthread_create(&thread_id, 0, transmit_child, (void *)&(trans_info)) == -1)
@@ -698,16 +696,14 @@ void *display_thread(void *arg)
 
                 pthread_t thread_id;
                 struct arg_transmit trans_info;
-                trans_info.sock = sockfd;
-		vector<uchar> transit = new vector<uchar>[ bufferFrame.size(  ) ];
-		for(   int i = 0; i < bufferFrame.size(    ); i++ ){
-		  
 
-		  transit.push_back( bufferFrame.at(  i ));
-		  
-		}
-		trans_info.frameBuffer = transit;
-		printf( "transinfo.frameBuffer size is %d",trans_info.frameBuffer.size(  ) );
+                 vector<uchar> *transit = new vector<uchar>[bufferFrame->size()];
+
+                  for(  int i = 0; i < bufferFrame->size(   ); i++ ){
+   
+                         transit->push_back( bufferFrame->at( i ));
+                      }
+                trans_info.frameBuffer = transit;
                 bzero(&trans_info.file_name, BUFFER_SIZE);
                 strcpy(trans_info.file_name, file_name);
 	       
@@ -848,13 +844,15 @@ void *orbit_thread(void *arg)
                 pthread_t thread_id;
                 struct arg_transmit trans_info;
                 trans_info.sock = sockfd;
-		for(   int i = 0; i < bufferFrame.size(    ); i++ ){
-		  
+	           vector<uchar> *transit = new vector<uchar>[bufferFrame->size()];
 
-		  trans_info.frameBuffer.push_back( bufferFrame.at(  i ));
-		}
+                  for(  int i = 0; i < bufferFrame->size(   ); i++ ){
+   
+                         transit->push_back( bufferFrame->at( i ));
+                      }
+                trans_info.frameBuffer = transit;
 
-		strcpy(trans_info.file_name, file_name);
+	           	strcpy(trans_info.file_name, file_name);
                 /* create thread and pass socket and file name to send file */
                 if (pthread_create(&thread_id, 0, transmit_child, (void *)&(trans_info)) == -1)
                 {
@@ -918,12 +916,13 @@ void *orbit_thread(void *arg)
                 pthread_t thread_id;
                 struct arg_transmit trans_info;
                 trans_info.sock = sockfd;
-		for(   int i = 0; i < bufferFrame.size(    ); i++ ){
-		  
+	          vector<uchar> *transit = new vector<uchar>[bufferFrame->size()];
 
-		  trans_info.frameBuffer.push_back(bufferFrame.at(  i ));
-    
-		}
+                  for(  int i = 0; i < bufferFrame->size(   ); i++ ){
+   
+                         transit->push_back( bufferFrame->at( i ));
+                      }
+                trans_info.frameBuffer = transit;
                 bzero(&trans_info.file_name, BUFFER_SIZE);
                 strcpy(trans_info.file_name, file_name);
                 /* create thread and pass socket and file name to send file */
