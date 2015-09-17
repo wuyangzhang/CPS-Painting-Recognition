@@ -64,7 +64,7 @@ int delay_time = 0;
 struct arg_transmit {
     int sock;
     char file_name[100];
-  vector<uchar> frameBuffer;
+    vector<uchar> *frameBuffer;
 };
 /******************************************************************************
 Description.: Display a help message
