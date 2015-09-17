@@ -297,7 +297,7 @@ void *transmit_child(void *arg)
     for( int i = 0; i < args->frameBuffer->size();i++ ){
       bufferFrame.push_back( args->frameBuffer->at( i ) );
     }
-    printf( "bufferFrame size is %d",args->frameBuffer.size(  ) );
+    printf( "bufferFrame size is %d",args->frameBuffer->size(  ) );
     args->frameBuffer->clear();
 
     if (!orbit) {
@@ -617,9 +617,9 @@ void *display_thread(void *arg)
                 pthread_t thread_id;
                 struct arg_transmit trans_info;
                 trans_info.sock = sockfd;
-                vector<uchar> *transit = new vector<uchar>[bufferFrame->size()];
+                vector<uchar> *transit = new vector<uchar>[bufferFrame.size()];
 
-                  for(  int i = 0; i < bufferFrame->size(   ); i++ ){
+                  for(  int i = 0; i < bufferFrame.size(   ); i++ ){
    
 		                 transit->push_back( bufferFrame.at( i ));
                       }
@@ -697,11 +697,11 @@ void *display_thread(void *arg)
                 pthread_t thread_id;
                 struct arg_transmit trans_info;
 
-                 vector<uchar> *transit = new vector<uchar>[bufferFrame->size()];
+                 vector<uchar> *transit = new vector<uchar>[bufferFrame.size()];
 
-                  for(  int i = 0; i < bufferFrame->size(   ); i++ ){
+                  for(  int i = 0; i < bufferFrame.size(   ); i++ ){
    
-                         transit->push_back( bufferFrame->at( i ));
+                         transit->push_back( bufferFrame.at( i ));
                       }
                 trans_info.frameBuffer = transit;
                 bzero(&trans_info.file_name, BUFFER_SIZE);
@@ -844,11 +844,11 @@ void *orbit_thread(void *arg)
                 pthread_t thread_id;
                 struct arg_transmit trans_info;
                 trans_info.sock = sockfd;
-	           vector<uchar> *transit = new vector<uchar>[bufferFrame->size()];
+	        vector<uchar> *transit = new vector<uchar>[bufferFrame.size()];
 
-                  for(  int i = 0; i < bufferFrame->size(   ); i++ ){
+                  for(  int i = 0; i < bufferFrame.size(   ); i++ ){
    
-                         transit->push_back( bufferFrame->at( i ));
+                         transit->push_back( bufferFrame.at( i ));
                       }
                 trans_info.frameBuffer = transit;
 
@@ -916,11 +916,11 @@ void *orbit_thread(void *arg)
                 pthread_t thread_id;
                 struct arg_transmit trans_info;
                 trans_info.sock = sockfd;
-	          vector<uchar> *transit = new vector<uchar>[bufferFrame->size()];
+	         vector<uchar> *transit = new vector<uchar>[bufferFrame.size()];
 
-                  for(  int i = 0; i < bufferFrame->size(   ); i++ ){
+                  for(  int i = 0; i < bufferFrame.size(   ); i++ ){
    
-                         transit->push_back( bufferFrame->at( i ));
+                         transit->push_back( bufferFrame.at( i ));
                       }
                 trans_info.frameBuffer = transit;
                 bzero(&trans_info.file_name, BUFFER_SIZE);
