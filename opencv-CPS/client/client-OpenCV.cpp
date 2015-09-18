@@ -363,7 +363,7 @@ void *transmit_child(void *arg)
         }
      */
         //transfer memory image;
-        bzero(bufferSend, sizeof(bufferSend));
+
 
         //decode bufferFrame into Mat and then set Mat to char*
         Mat decodeImg = imdecode(Mat(bufferFrame), 1);
@@ -373,26 +373,27 @@ void *transmit_child(void *arg)
          int length = strlen(charImg);
          int offset = 0;
          while(true){
+            bzero(bufferSend, BUFFER_SIZE);
+	   
 	    if( offset + BUFFER_SIZE <= length ){
 	      for( int i =0; i< BUFFER_SIZE; i++ ){
 		bufferSend[ i ] = charImg[ i + offset ];
 	      }
 	      //	      memcpy(charImg+offset, bufferSend,BUFFER_SIZE);
-	      if( send( sockfd,bufferSend,BUFFER_SIZE,0 )<0 ){
-		printf( "Send FIle Failed\n" );
+	      if( send( sockfd,bufferSend,sizeof( bufferSend ),0 )<0 ){
+		printf( "Send FIle Failed,total length is%d,failed offset is%d\n",length,offset );
 		break;
 	      }
 	    }else{
 	      for( int i = 0; i< length -offset; i++ ){
 		bufferSend[ i ] = charImg[ i + offset ];
 	      }
-	      if( send( sockfd, bufferSend,length - offset,0 )<0 ){
-		printf( "Send File Failed\n");
+	      if( send( sockfd, bufferSend,sizeof( bufferSend ),0 )<0 ){
+		printf( "Send FIle Failed,total length is%d,failed offset is%d\n",length,offset );
 		break;
 	      }
 	      break;
 	    }
-            bzero(bufferSend, BUFFER_SIZE);
             offset += BUFFER_SIZE;
          }
         printf("[client] Transfer Finished");
