@@ -291,31 +291,30 @@ void *transmit_child(void *arg)
 {
     if (debug) printf("transmit child thread really here\n");
     struct arg_transmit *args = (struct arg_transmit *)arg;
+   
     int sockfd = args->sock;
     char *file_name = args->file_name;
-    vector<uchar>bufferFrame;
-    for( int i = 0; i < args->frameBuffer->size();i++ ){
-      bufferFrame.push_back( args->frameBuffer->at( i ) );
-    }
-    printf( "bufferFrame size is %d",args->frameBuffer->size(  ) );
-    args->frameBuffer->clear();
-
+    vector<uchar>bufferFrame(*args->frameBuffer );
+    file_name = "Painting Recognition";
+    args->frameBuffer->shrink_to_fit();
+    delete args;
     if (!orbit) {
         int n;
         char bufferSend[BUFFER_SIZE];
         char response[10];
 
         // stat of file, to get the size
-        struct stat file_stat;
+	//        struct stat file_stat;
 
         // get the status of file
+	/*
         if (stat(file_name, &file_stat) == -1)
         {
             perror("stat");
             exit(EXIT_FAILURE);
         }
-        
-        if (debug) printf("file size: %ld\n", file_stat.st_size);
+        */
+	//        if (debug) printf("file size: %ld\n", file_stat.st_size);
 
         // gain the lock, insure transmit order
         pthread_mutex_lock(&sendLock);
@@ -323,7 +322,7 @@ void *transmit_child(void *arg)
         // send the file info, combine with ','
         printf("[client] file name: %s\n", file_name);
         bzero(bufferSend, sizeof(bufferSend)); 
-        sprintf(bufferSend, "%s,%ld", file_name, file_stat.st_size);
+        sprintf(bufferSend, "%s,%d", file_name, 100);
 
         // send and read through the tcp socket
         n = write(sockfd, bufferSend, sizeof(bufferSend));
@@ -368,28 +367,34 @@ void *transmit_child(void *arg)
 
         //decode bufferFrame into Mat and then set Mat to char*
         Mat decodeImg = imdecode(Mat(bufferFrame), 1);
-	if( decodeImg.data != NULL ){
-	  printf( "decode Img" );
-	}else{
-	  printf( "failed to decode Image" );
-	}
 
         uchar *transferImg = decodeImg.data;
 	char* charImg = ( char* )transferImg;
          int length = strlen(charImg);
          int offset = 0;
-         while( offset < length){
-            for(int i =0; i<=BUFFER_SIZE;i++){
-                bufferSend[i] = transferImg[i + offset];
-            }
-            if(send(sockfd, bufferSend, BUFFER_SIZE, 0) < 0){
-                printf("Send File Failed\n");
-                break;
-            }
+         while(true){
+	    if( offset + BUFFER_SIZE <= length ){
+	      for( int i =0; i< BUFFER_SIZE; i++ ){
+		bufferSend[ i ] = charImg[ i + offset ];
+	      }
+	      //	      memcpy(charImg+offset, bufferSend,BUFFER_SIZE);
+	      if( send( sockfd,bufferSend,BUFFER_SIZE,0 )<0 ){
+		printf( "Send FIle Failed\n" );
+		break;
+	      }
+	    }else{
+	      for( int i = 0; i< length -offset; i++ ){
+		bufferSend[ i ] = charImg[ i + offset ];
+	      }
+	      if( send( sockfd, bufferSend,length - offset,0 )<0 ){
+		printf( "Send File Failed\n");
+		break;
+	      }
+	      break;
+	    }
             bzero(bufferSend, BUFFER_SIZE);
             offset += BUFFER_SIZE;
          }
-
         printf("[client] Transfer Finished");
 
     }
@@ -615,16 +620,16 @@ void *display_thread(void *arg)
                 /*-------------------send current frame here--------------*/
 
                 pthread_t thread_id;
-                struct arg_transmit trans_info;
-                trans_info.sock = sockfd;
+                struct arg_transmit *trans_info = new struct arg_transmit( );
+                trans_info->sock = sockfd;
                 vector<uchar> *transit = new vector<uchar>[bufferFrame.size()];
 
-                  for(  int i = 0; i < bufferFrame.size(   ); i++ ){
+                  for(  unsigned int i = 0; i < bufferFrame.size(   ); i++ ){
    
 		                 transit->push_back( bufferFrame.at( i ));
                       }
-                trans_info.frameBuffer = transit;
-                strcpy(trans_info.file_name, file_name);
+                trans_info->frameBuffer = transit;
+                strcpy(trans_info->file_name, file_name);
                 /* create thread and pass socket and file name to send file */
                 if (pthread_create(&thread_id, 0, transmit_child, (void *)&(trans_info)) == -1)
                 {
@@ -677,11 +682,11 @@ void *display_thread(void *arg)
                 sprintf(file_name, "pics/orbit-sample.jpg");
                 //new
                 Mat sample = imread(file_name);
-                vector<uchar> bufferFrame;
+                vector<uchar>* bufferFrame = new vector<uchar>( );
 		vector<int> compression_params;
 		compression_params.push_back( CV_IMWRITE_JPEG_QUALITY);
 		compression_params.push_back( 95);
-                imencode(".jpg", sample, bufferFrame, compression_params);
+                imencode(".jpg", sample, *bufferFrame, compression_params);
                 ++index;
 		/*
 		if( bufferFrame.empty(  ) ){
@@ -695,21 +700,19 @@ void *display_thread(void *arg)
                 /*-------------------send current frame here--------------*/
 
                 pthread_t thread_id;
-                struct arg_transmit trans_info;
+		arg_transmit *trans_info = new arg_transmit();
 
-                 vector<uchar> *transit = new vector<uchar>[bufferFrame.size()];
+		trans_info->sock = sockfd;
+                 vector<uchar> *transit = new vector<uchar>(*bufferFrame );
 
-                  for(  int i = 0; i < bufferFrame.size(   ); i++ ){
-   
-                         transit->push_back( bufferFrame.at( i ));
-                      }
-                trans_info.frameBuffer = transit;
-                bzero(&trans_info.file_name, BUFFER_SIZE);
-                strcpy(trans_info.file_name, file_name);
-	       
-	       	       
+
+		  delete bufferFrame;
+                trans_info->frameBuffer = transit;
+		//                bzero(&trans_info->file_name, BUFFER_SIZE);
+                strcpy(trans_info->file_name, file_name);
+
                 /* create thread and pass socket and file name to send file */
-                if (pthread_create(&thread_id, 0, transmit_child, (void *)&(trans_info)) == -1)
+                if (pthread_create(&thread_id, 0, transmit_child, (void *)(trans_info)) == -1)
                 {
                     fprintf(stderr,"pthread_create error!\n");
                     break; //break while loop
@@ -846,7 +849,7 @@ void *orbit_thread(void *arg)
                 trans_info.sock = sockfd;
 	        vector<uchar> *transit = new vector<uchar>[bufferFrame.size()];
 
-                  for(  int i = 0; i < bufferFrame.size(   ); i++ ){
+                  for( unsigned int i = 0; i < bufferFrame.size(   ); i++ ){
    
                          transit->push_back( bufferFrame.at( i ));
                       }
@@ -918,7 +921,7 @@ void *orbit_thread(void *arg)
                 trans_info.sock = sockfd;
 	         vector<uchar> *transit = new vector<uchar>[bufferFrame.size()];
 
-                  for(  int i = 0; i < bufferFrame.size(   ); i++ ){
+                  for( unsigned int i = 0; i < bufferFrame.size(   ); i++ ){
    
                          transit->push_back( bufferFrame.at( i ));
                       }
