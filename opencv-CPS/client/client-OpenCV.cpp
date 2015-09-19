@@ -296,12 +296,9 @@ void *transmit_child(void *arg)
     char *file_name = args->file_name;
     vector<uchar>bufferFrame(*args->frameBuffer );
     int imgLen = bufferFrame.size();
-    char frameSend [ bufferFrame.size( ) ];
-    for ( int i =0; i < bufferFrame.size( ); i++ ){
-      frameSend[ i ] = bufferFrame.at( i );
-    }
+    char *frameSend =( char * )(&bufferFrame);
 
-    file_name = "Painting Recognition";
+    // file_name = "Painting Recognition";
     args->frameBuffer->shrink_to_fit();
     delete args;
     if (!orbit) {
@@ -371,15 +368,8 @@ void *transmit_child(void *arg)
         //transfer memory image;
 
 
-        //decode bufferFrame into Mat and then set Mat to char*
-        Mat decodeImg = imdecode(Mat(bufferFrame), 1);
-
-        uchar *transferImg = decodeImg.data;
-	//	char* charImg = ( char* )transferImg;
-	//	char *frameSend
-		//int length = strlen(frameSend);
-			int length = imgLen;
-         printf("imgLen: %d\n", imgLen);
+	int length = imgLen;
+        
          int offset = 0;
          while(true){
             bzero(bufferSend, BUFFER_SIZE);
@@ -428,12 +418,15 @@ void *transmit_child(void *arg)
         int send_size = BUFFER_SIZE * 4; //4096 bytes per time
         char bufferSend[send_size];
         
-        // get the status of file
+        
+	// get the status of file
+	/*
         if (stat(file_name, &file_stat) == -1)
         {
             perror("stat");
             exit(EXIT_FAILURE);
         }
+	*/
         if (debug) printf("one time size: %d\n", send_size);
         printf("file size: %ld\n", file_stat.st_size);
 
@@ -442,7 +435,7 @@ void *transmit_child(void *arg)
 
         // send the file info, combine with ','
         printf("[client] file name: %s\n", file_name);
-        sprintf(bufferSend, "%s,%ld", file_name, file_stat.st_size);
+        sprintf(bufferSend, "%s,%d", file_name, imgLen);
 
         // send through the socket
         n = MsgD.send(sockfd, bufferSend, 100);
@@ -485,22 +478,31 @@ void *transmit_child(void *arg)
         bzero(bufferSend, sizeof(bufferSend));
 
         //decode bufferFrame into Mat and then set Mat to char*
-        Mat decodeImg = imdecode(Mat(bufferFrame), CV_LOAD_IMAGE_COLOR);
 
-        uchar* transferImg = decodeImg.data;
-	char* charImg = ( char* )transferImg;
-         int length = strlen(charImg);
+         int length = imgLen;
          int offset = 0;
-         while( offset < length){
-            for(int i =0; i<=BUFFER_SIZE;i++){
-                bufferSend[i] = transferImg[i + offset];
-            }
-            if(send(sockfd, bufferSend, BUFFER_SIZE, 0) < 0){
-                printf("Send File Failed\n");
-                break;
-            }
-            bzero(bufferSend, BUFFER_SIZE);
-            offset += BUFFER_SIZE;
+
+         while( true){
+	   bzero( bufferSend, send_size );
+	   if ( offset + send_size <=length ){
+	     
+	     for( int i = 0; i< send_size; i++ ){
+	       bufferSend[ i ] = frameSend[ i + offset ];
+	     }
+	     if(MsgD.send( sockfd, bufferSend, send_size )<0 ){
+	       printf( "send file %s Failed\n", file_name );
+	       break;
+	     }
+	   }else{
+	     for( int i = 0; i < length - offset; i++ ){
+	       bufferSend[ i ] = frameSend[ i + offset ];
+	     }
+	     if( MsgD.send( sockfd, bufferSend, send_size )<0 ){
+	       printf( "send file %s failed\n",file_name );
+	       break;
+	     }
+	   }
+	   offset += send_size;
          }
 
         printf("[client] Transfer Finished");
@@ -842,8 +844,8 @@ void *orbit_thread(void *arg)
                 sprintf(file_name, "pics/%s-%d.jpg", userID, index);
                 //imwrite(file_name, frame, compression_params);
                 ++index;
-                vector<uchar> bufferFrame = new vector<uchar>();
-                imencode(".jpg", frame, bufferFrame, compression_params);
+                vector<uchar>* bufferFrame = new vector<uchar>();
+                imencode(".jpg", frame, *bufferFrame, compression_params);
 
                
                 /*-------------------send current frame here--------------*/
@@ -851,11 +853,11 @@ void *orbit_thread(void *arg)
                 pthread_t thread_id;
                 arg_transmit* trans_info = new arg_transmit();
                 trans_info->sock = sockfd;
-	            vector<uchar> *transit = new vector<uchar>(*bufferFrame);
+	        vector<uchar> *transit = new vector<uchar>(*bufferFrame);
                 delete bufferFrame;
                 trans_info->frameBuffer = transit;
 
-	           	strcpy(trans_info.file_name, file_name);
+	           	strcpy(trans_info->file_name, file_name);
                 /* create thread and pass socket and file name to send file */
                 if (pthread_create(&thread_id, 0, transmit_child, (void *)&(trans_info)) == -1)
                 {
@@ -911,8 +913,8 @@ void *orbit_thread(void *arg)
         		compression_params.push_back( 95);
 
         		Mat sample = imread( file_name );
-        		vector<uchar> bufferFrame = new vector<uchar>();
-        		imencode( "jpg", sample, bufferFrame,compression_params);
+        		vector<uchar>* bufferFrame = new vector<uchar>();
+        		imencode( "jpg", sample,*bufferFrame,compression_params);
 
 
                 /*-------------------send current frame here--------------*/
@@ -924,7 +926,7 @@ void *orbit_thread(void *arg)
                 trans_info->frameBuffer = transit;
                 delete bufferFrame;
               //  bzero(&trans_info.file_name, BUFFER_SIZE);
-                strcpy(trans_info.file_name, file_name);
+                strcpy(trans_info->file_name, file_name);
                 /* create thread and pass socket and file name to send file */
                 if (pthread_create(&thread_id, 0, transmit_child, (void *)&(trans_info)) == -1)
                 {
