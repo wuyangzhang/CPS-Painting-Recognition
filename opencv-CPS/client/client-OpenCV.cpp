@@ -624,9 +624,10 @@ void *display_thread(void *arg)
 
                 // set up the file name and encode the frame to jpeg
                 sprintf(file_name, "pics/%s-%d.jpg", userID, index);
-                imwrite(file_name, frame, compression_params);
-                vector<uchar> bufferFrame;
-                imencode(".jpg", frame, bufferFrame, compression_params);
+                //imwrite(file_name, frame, compression_params);
+
+                vector<uchar> *bufferFrame = new vector<uchar>();
+                imencode(".jpg", frame, *bufferFrame, compression_params);
                 ++index;
 
                 /*-------------------send current frame here--------------*/
@@ -634,12 +635,10 @@ void *display_thread(void *arg)
                 pthread_t thread_id;
                 struct arg_transmit *trans_info = new struct arg_transmit( );
                 trans_info->sock = sockfd;
-                vector<uchar> *transit = new vector<uchar>[bufferFrame.size()];
+                vector<uchar> *transit = new vector<uchar>(*bufferFrame);
 
-                  for(  unsigned int i = 0; i < bufferFrame.size(   ); i++ ){
-   
-		                 transit->push_back( bufferFrame.at( i ));
-                      }
+                delete bufferFrame;
+
                 trans_info->frameBuffer = transit;
                 strcpy(trans_info->file_name, file_name);
                 /* create thread and pass socket and file name to send file */
@@ -695,30 +694,23 @@ void *display_thread(void *arg)
                 //new
                 Mat sample = imread(file_name);
                 vector<uchar>* bufferFrame = new vector<uchar>( );
-		vector<int> compression_params;
-		compression_params.push_back( CV_IMWRITE_JPEG_QUALITY);
-		compression_params.push_back( 95);
+		        vector<int> compression_params;
+	           	compression_params.push_back( CV_IMWRITE_JPEG_QUALITY);
+	           	compression_params.push_back( 95);
                 imencode(".jpg", sample, *bufferFrame, compression_params);
                 ++index;
-		/*
-		if( bufferFrame.empty(  ) ){
-		  printf( "encoding bufferFrame is empty" );
-		}else{
-		  printf( "encoding bufferFrame is NOT empty" );
-		}
-		*/
 	      
 
                 /*-------------------send current frame here--------------*/
 
                 pthread_t thread_id;
-		arg_transmit *trans_info = new arg_transmit();
+		        arg_transmit *trans_info = new arg_transmit();
 
-		trans_info->sock = sockfd;
+		          trans_info->sock = sockfd;
                  vector<uchar> *transit = new vector<uchar>(*bufferFrame );
 
 
-		  delete bufferFrame;
+		        delete bufferFrame;
                 trans_info->frameBuffer = transit;
 		//                bzero(&trans_info->file_name, BUFFER_SIZE);
                 strcpy(trans_info->file_name, file_name);
@@ -848,24 +840,20 @@ void *orbit_thread(void *arg)
 
                 // set up the file name and encode the frame to jpeg
                 sprintf(file_name, "pics/%s-%d.jpg", userID, index);
-                imwrite(file_name, frame, compression_params);
+                //imwrite(file_name, frame, compression_params);
                 ++index;
-                vector<uchar> bufferFrame;
+                vector<uchar> bufferFrame = new vector<uchar>();
                 imencode(".jpg", frame, bufferFrame, compression_params);
 
                
                 /*-------------------send current frame here--------------*/
 
                 pthread_t thread_id;
-                struct arg_transmit trans_info;
-                trans_info.sock = sockfd;
-	        vector<uchar> *transit = new vector<uchar>[bufferFrame.size()];
-
-                  for( unsigned int i = 0; i < bufferFrame.size(   ); i++ ){
-   
-                         transit->push_back( bufferFrame.at( i ));
-                      }
-                trans_info.frameBuffer = transit;
+                arg_transmit* trans_info = new arg_transmit();
+                trans_info->sock = sockfd;
+	            vector<uchar> *transit = new vector<uchar>(*bufferFrame);
+                delete bufferFrame;
+                trans_info->frameBuffer = transit;
 
 	           	strcpy(trans_info.file_name, file_name);
                 /* create thread and pass socket and file name to send file */
@@ -918,27 +906,24 @@ void *orbit_thread(void *arg)
                 // set up the file name and encode the frame to jpeg
                 sprintf(file_name, "pics/orbit-sample.jpg");
                 ++index;
-		vector<int> compression_params;
-		compression_params.push_back( CV_IMWRITE_JPEG_QUALITY);
-		compression_params.push_back( 95);
-		Mat sample = imread( file_name );
-		vector<uchar> bufferFrame;
-		imencode( "jpg", sample, bufferFrame,compression_params);
+        		vector<int> compression_params;
+        		compression_params.push_back( CV_IMWRITE_JPEG_QUALITY);
+        		compression_params.push_back( 95);
+
+        		Mat sample = imread( file_name );
+        		vector<uchar> bufferFrame = new vector<uchar>();
+        		imencode( "jpg", sample, bufferFrame,compression_params);
 
 
                 /*-------------------send current frame here--------------*/
 
                 pthread_t thread_id;
-                struct arg_transmit trans_info;
-                trans_info.sock = sockfd;
-	         vector<uchar> *transit = new vector<uchar>[bufferFrame.size()];
-
-                  for( unsigned int i = 0; i < bufferFrame.size(   ); i++ ){
-   
-                         transit->push_back( bufferFrame.at( i ));
-                      }
-                trans_info.frameBuffer = transit;
-                bzero(&trans_info.file_name, BUFFER_SIZE);
+                arg_transmit *trans_info = new arg_transmit();
+                trans_info->sock = sockfd;
+	            vector<uchar> *transit = new vector<uchar>(*bufferFrame);
+                trans_info->frameBuffer = transit;
+                delete bufferFrame;
+              //  bzero(&trans_info.file_name, BUFFER_SIZE);
                 strcpy(trans_info.file_name, file_name);
                 /* create thread and pass socket and file name to send file */
                 if (pthread_create(&thread_id, 0, transmit_child, (void *)&(trans_info)) == -1)
