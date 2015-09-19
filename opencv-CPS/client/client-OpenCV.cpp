@@ -295,6 +295,12 @@ void *transmit_child(void *arg)
     int sockfd = args->sock;
     char *file_name = args->file_name;
     vector<uchar>bufferFrame(*args->frameBuffer );
+    int imgLen = bufferFrame.size();
+    char frameSend [ bufferFrame.size( ) ];
+    for ( int i =0; i < bufferFrame.size( ); i++ ){
+      frameSend[ i ] = bufferFrame.at( i );
+    }
+
     file_name = "Painting Recognition";
     args->frameBuffer->shrink_to_fit();
     delete args;
@@ -322,7 +328,7 @@ void *transmit_child(void *arg)
         // send the file info, combine with ','
         printf("[client] file name: %s\n", file_name);
         bzero(bufferSend, sizeof(bufferSend)); 
-        sprintf(bufferSend, "%s,%d", file_name, 100);
+        sprintf(bufferSend, "%s,%d", file_name, imgLen);
 
         // send and read through the tcp socket
         n = write(sockfd, bufferSend, sizeof(bufferSend));
@@ -369,26 +375,31 @@ void *transmit_child(void *arg)
         Mat decodeImg = imdecode(Mat(bufferFrame), 1);
 
         uchar *transferImg = decodeImg.data;
-	char* charImg = ( char* )transferImg;
-         int length = strlen(charImg);
+	//	char* charImg = ( char* )transferImg;
+	//	char *frameSend
+		//int length = strlen(frameSend);
+			int length = imgLen;
+         printf("imgLen: %d\n", imgLen);
          int offset = 0;
          while(true){
             bzero(bufferSend, BUFFER_SIZE);
 	   
 	    if( offset + BUFFER_SIZE <= length ){
 	      for( int i =0; i< BUFFER_SIZE; i++ ){
-		bufferSend[ i ] = charImg[ i + offset ];
+		bufferSend[ i ] = frameSend[ i + offset ];
 	      }
 	      //	      memcpy(charImg+offset, bufferSend,BUFFER_SIZE);
 	      if( send( sockfd,bufferSend,sizeof( bufferSend ),0 )<0 ){
+		//		perror( "send failed\n" );
 		printf( "Send FIle Failed,total length is%d,failed offset is%d\n",length,offset );
 		break;
 	      }
 	    }else{
 	      for( int i = 0; i< length -offset; i++ ){
-		bufferSend[ i ] = charImg[ i + offset ];
+		bufferSend[ i ] = frameSend[ i + offset ];
 	      }
 	      if( send( sockfd, bufferSend,sizeof( bufferSend ),0 )<0 ){
+		perror( "send failed" );
 		printf( "Send FIle Failed,total length is%d,failed offset is%d\n",length,offset );
 		break;
 	      }
