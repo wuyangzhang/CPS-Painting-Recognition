@@ -296,11 +296,13 @@ void *transmit_child(void *arg)
     char *file_name = args->file_name;
     vector<uchar>bufferFrame(*args->frameBuffer );
     int imgLen = bufferFrame.size();
+    /*
     char frameSend [ bufferFrame.size()];
     for ( int i = 0; i < bufferFrame.size( ); i++ ){
       frameSend[ i ] = bufferFrame.at( i );
     }
-
+    */
+    char *frameSend = (char*) bufferFrame.data();
      file_name = "Painting Recognition";
      args->frameBuffer->shrink_to_fit();
      delete args;
@@ -349,10 +351,11 @@ void *transmit_child(void *arg)
             bzero(bufferSend, BUFFER_SIZE);
 	   
 	    if( offset + BUFFER_SIZE <= length ){
+	      
 	      for( int i =0; i< BUFFER_SIZE; i++ ){
 		bufferSend[ i ] = frameSend[ i + offset ];
 	      }
-	      //	      memcpy(charImg+offset, bufferSend,BUFFER_SIZE);
+	      
 	      if( send( sockfd,bufferSend,sizeof( bufferSend ),0 )<0 ){
 		perror( "send failed\n" );
 		printf( "Send FIle Failed,total length is%d,failed offset is%d\n",length,offset );
@@ -612,11 +615,8 @@ void *display_thread(void *arg)
                 pthread_t thread_id;
                 struct arg_transmit *trans_info = new struct arg_transmit( );
                 trans_info->sock = sockfd;
-                vector<uchar> *transit = new vector<uchar>(*bufferFrame);
-
-                delete bufferFrame;
-
-                trans_info->frameBuffer = transit;
+               
+                trans_info->frameBuffer = bufferFrame;
                 strcpy(trans_info->file_name, file_name);
                 /* create thread and pass socket and file name to send file */
                 if (pthread_create(&thread_id, 0, transmit_child, (void *)&(trans_info)) == -1)
