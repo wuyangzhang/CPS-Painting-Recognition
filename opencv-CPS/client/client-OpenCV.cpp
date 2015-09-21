@@ -296,11 +296,15 @@ void *transmit_child(void *arg)
     char *file_name = args->file_name;
     vector<uchar>bufferFrame(*args->frameBuffer );
     int imgLen = bufferFrame.size();
-    char *frameSend =( char * )(&bufferFrame);
+    char frameSend [ bufferFrame.size()];
+    for ( int i = 0; i < bufferFrame.size( ); i++ ){
+      frameSend[ i ] = bufferFrame.at( i );
+    }
 
-    // file_name = "Painting Recognition";
-    args->frameBuffer->shrink_to_fit();
-    delete args;
+     file_name = "Painting Recognition";
+     args->frameBuffer->shrink_to_fit();
+     delete args;
+
     if (!orbit) {
         int n;
         char bufferSend[BUFFER_SIZE];
@@ -325,7 +329,7 @@ void *transmit_child(void *arg)
         // send the file info, combine with ','
         printf("[client] file name: %s\n", file_name);
         bzero(bufferSend, sizeof(bufferSend)); 
-        sprintf(bufferSend, "%s,%d", file_name, imgLen);
+        sprintf(bufferSend, "%s,%ld", file_name, imgLen);
 
         // send and read through the tcp socket
         n = write(sockfd, bufferSend, sizeof(bufferSend));
@@ -337,39 +341,9 @@ void *transmit_child(void *arg)
         if (n < 0) 
             error("ERROR reading from socket");
 
-/*
-        FILE *fp = fopen(file_name, "r");  
-        if (fp == NULL)  
-        {  
-            printf("File:\t%s Not Found!\n", file_name);
-            exit(0);
-        }  
-        else  
-        {  
-            bzero(bufferSend, sizeof(bufferSend));  
-            int file_block_length = 0;
-            // start transmitting the file
-            while( (file_block_length = fread(bufferSend, sizeof(char), BUFFER_SIZE, fp)) > 0)  
-            {  
-                // send data to the client side  
-                if (send(sockfd, bufferSend, file_block_length, 0) < 0)  
-                {  
-                    printf("Send File: %s Failed!\n", file_name);  
-                    break;  
-                }  
-
-                bzero(bufferSend, BUFFER_SIZE);  
-            }
-
-            fclose(fp);  
-            printf("[client] Transfer Finished!\n\n");  
-        }
-     */
         //transfer memory image;
-
-
 	int length = imgLen;
-        
+        printf( "send file length%d\n",length );
          int offset = 0;
          while(true){
             bzero(bufferSend, BUFFER_SIZE);
@@ -380,7 +354,7 @@ void *transmit_child(void *arg)
 	      }
 	      //	      memcpy(charImg+offset, bufferSend,BUFFER_SIZE);
 	      if( send( sockfd,bufferSend,sizeof( bufferSend ),0 )<0 ){
-		//		perror( "send failed\n" );
+		perror( "send failed\n" );
 		printf( "Send FIle Failed,total length is%d,failed offset is%d\n",length,offset );
 		break;
 	      }
@@ -507,7 +481,8 @@ void *transmit_child(void *arg)
 
         printf("[client] Transfer Finished");
     }
-
+    //    args->frameBuffer->shrink_to_fit( );
+    // delete args;
     pthread_mutex_unlock(&sendLock);
     pthread_exit(NULL);
 
@@ -696,9 +671,9 @@ void *display_thread(void *arg)
                 //new
                 Mat sample = imread(file_name);
                 vector<uchar>* bufferFrame = new vector<uchar>( );
-		        vector<int> compression_params;
-	           	compression_params.push_back( CV_IMWRITE_JPEG_QUALITY);
-	           	compression_params.push_back( 95);
+		vector<int> compression_params;
+		compression_params.push_back( CV_IMWRITE_JPEG_QUALITY);
+		compression_params.push_back( 95);
                 imencode(".jpg", sample, *bufferFrame, compression_params);
                 ++index;
 	      
@@ -706,13 +681,13 @@ void *display_thread(void *arg)
                 /*-------------------send current frame here--------------*/
 
                 pthread_t thread_id;
-		        arg_transmit *trans_info = new arg_transmit();
+		arg_transmit *trans_info = new arg_transmit();
+		trans_info->sock = sockfd;
+                
+		 vector<uchar> *transit = new vector<uchar>(*bufferFrame );
 
-		          trans_info->sock = sockfd;
-                 vector<uchar> *transit = new vector<uchar>(*bufferFrame );
 
-
-		        delete bufferFrame;
+		delete bufferFrame;
                 trans_info->frameBuffer = transit;
 		//                bzero(&trans_info->file_name, BUFFER_SIZE);
                 strcpy(trans_info->file_name, file_name);
